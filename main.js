@@ -62,6 +62,105 @@ Hooks.once('init', async () => {
 });
 
 /**
+ * Hook exécuté une fois que le jeu est prêt.
+ * Bloque l'accès aux compendiums cachés en interceptant leurs méthodes.
+ */
+Hooks.once('ready', () => {
+  // Intercepter les méthodes de CompendiumCollection pour bloquer l'accès aux compendiums cachés
+  interceptCompendiumAccess();
+  
+  console.log(`${MODULE_ID} | Blocage de recherche activé pour les compendiums cachés.`);
+});
+
+/**
+ * Intercepte et bloque l'accès aux compendiums cachés
+ */
+function interceptCompendiumAccess() {
+  const hiddenCompendiums = game.settings.get(MODULE_ID, COMPENDIUM_SETTING_KEY) || [];
+  
+  if (hiddenCompendiums.length === 0) return;
+
+  // Créer un Set pour une recherche plus rapide
+  const hiddenSet = new Set(hiddenCompendiums);
+
+  // Fonction utilitaire pour vérifier si un compendium est caché
+  const isHidden = (packId) => hiddenSet.has(packId);
+
+  // Intercepter la méthode search() de CompendiumCollection
+  const originalSearch = game.packs.constructor.prototype.search;
+  game.packs.constructor.prototype.search = async function(search) {
+    // Si ce compendium est caché, retourner un résultat vide
+    if (isHidden(this.collection)) {
+      console.log(`${MODULE_ID} | Recherche bloquée dans le compendium caché: ${this.collection}`);
+      return [];
+    }
+    return originalSearch.call(this, search);
+  };
+
+  // Intercepter la méthode getDocuments() pour empêcher le chargement des documents
+  const originalGetDocuments = game.packs.constructor.prototype.getDocuments;
+  game.packs.constructor.prototype.getDocuments = async function(query) {
+    if (isHidden(this.collection)) {
+      console.log(`${MODULE_ID} | Accès aux documents bloqué pour le compendium caché: ${this.collection}`);
+      return [];
+    }
+    return originalGetDocuments.call(this, query);
+  };
+
+  // Intercepter getDocument() pour empêcher l'accès à des documents individuels
+  const originalGetDocument = game.packs.constructor.prototype.getDocument;
+  game.packs.constructor.prototype.getDocument = async function(id) {
+    if (isHidden(this.collection)) {
+      console.log(`${MODULE_ID} | Accès au document bloqué pour le compendium caché: ${this.collection}`);
+      return null;
+    }
+    return originalGetDocument.call(this, id);
+  };
+
+  // Intercepter getIndex() pour empêcher l'accès à l'index
+  const originalGetIndex = game.packs.constructor.prototype.getIndex;
+  game.packs.constructor.prototype.getIndex = async function(options) {
+    if (isHidden(this.collection)) {
+      console.log(`${MODULE_ID} | Accès à l'index bloqué pour le compendium caché: ${this.collection}`);
+      return new foundry.utils.Collection();
+    }
+    return originalGetIndex.call(this, options);
+  };
+
+  // Bloquer l'ouverture de l'application de compendium
+  const originalRender = CONFIG.CompendiumCollection.documentClass.prototype.sheet.constructor.prototype.render;
+  Hooks.on('renderCompendium', (app, html, data) => {
+    if (isHidden(app.collection.collection)) {
+      console.log(`${MODULE_ID} | Fermeture de l'application pour le compendium caché: ${app.collection.collection}`);
+      app.close();
+      ui.notifications.warn(game.i18n.localize('HIDECOMPENDIUM.WARNING.BLOCKED') || 'Ce compendium est caché et ne peut pas être ouvert.');
+    }
+  });
+}
+
+/**
+ * Hook pour filtrer les résultats de recherche globale
+ */
+Hooks.on('collectionSearch', (collection, query, results) => {
+  const hiddenCompendiums = game.settings.get(MODULE_ID, COMPENDIUM_SETTING_KEY) || [];
+  
+  if (hiddenCompendiums.length === 0 || !results) return;
+
+  // Filtrer les résultats provenant de compendiums cachés
+  const filteredResults = results.filter(result => {
+    // Si le résultat provient d'un compendium
+    if (result.pack) {
+      return !hiddenCompendiums.includes(result.pack);
+    }
+    return true;
+  });
+
+  // Remplacer les résultats par la version filtrée
+  results.length = 0;
+  results.push(...filteredResults);
+});
+
+/**
  * Hook exécuté après le rendu de l'onglet Compendiums.
  * Masque les compendiums et dossiers sélectionnés par l'utilisateur,
  * et masque également les dossiers devenus vides suite au masquage de leur contenu.
@@ -110,3 +209,54 @@ Hooks.on('renderCompendiumDirectory', (app, html, data) => {
     }
   });
 });
+
+/**
+ * Hook pour bloquer les tentatives de drag-and-drop depuis des compendiums cachés
+ */
+Hooks.on('preCreateItem', (document, data, options, userId) => {
+  return checkCompendiumAccess(data);
+});
+
+Hooks.on('preCreateActor', (document, data, options, userId) => {
+  return checkCompendiumAccess(data);
+});
+
+Hooks.on('preCreateJournalEntry', (document, data, options, userId) => {
+  return checkCompendiumAccess(data);
+});
+
+Hooks.on('preCreateRollTable', (document, data, options, userId) => {
+  return checkCompendiumAccess(data);
+});
+
+Hooks.on('preCreateMacro', (document, data, options, userId) => {
+  return checkCompendiumAccess(data);
+});
+
+Hooks.on('preCreatePlaylist', (document, data, options, userId) => {
+  return checkCompendiumAccess(data);
+});
+
+Hooks.on('preCreateScene', (document, data, options, userId) => {
+  return checkCompendiumAccess(data);
+});
+
+/**
+ * Vérifie si les données proviennent d'un compendium caché
+ */
+function checkCompendiumAccess(data) {
+  if (!data.flags?.core?.sourceId) return true;
+  
+  const hiddenCompendiums = game.settings.get(MODULE_ID, COMPENDIUM_SETTING_KEY) || [];
+  const sourceId = data.flags.core.sourceId;
+  
+  // Extraire le packId du sourceId (format: "Compendium.packId.documentId")
+  const match = sourceId.match(/Compendium\.([^.]+)/);
+  if (match && hiddenCompendiums.includes(match[1])) {
+    console.log(`${MODULE_ID} | Blocage de la création depuis le compendium caché: ${match[1]}`);
+    ui.notifications.error(game.i18n.localize('HIDECOMPENDIUM.ERROR.BLOCKED_SOURCE') || 'Impossible de créer cet élément depuis un compendium caché.');
+    return false;
+  }
+  
+  return true;
+}
