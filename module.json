@@ -1,3 +1,6 @@
+To https://github.com/brokenlander/hide-compendiums-and-folders
+   f6c0cd7..d1dc0f6  main -> main
+PS C:\Users\marut\hide-compendiums-and-folders> cat module.json
 {
   "id": "hide-compendiums-and-folders",
   "title": "Hide Compendiums & Folders",
@@ -24,7 +27,7 @@
     },
     {
       "lang": "fr",
-      "name": "Français",
+      "name": "FranÃ§ais",
       "path": "languages/fr.json"
     },
     {
@@ -40,3 +43,4 @@
   "download": "",
   "url": ""
 }
+PS C:\Users\marut\hide-compendiums-and-folders>
