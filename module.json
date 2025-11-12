@@ -1,11 +1,8 @@
-To https://github.com/brokenlander/hide-compendiums-and-folders
-   f6c0cd7..d1dc0f6  main -> main
-PS C:\Users\marut\hide-compendiums-and-folders> cat module.json
 {
   "id": "hide-compendiums-and-folders",
   "title": "Hide Compendiums & Folders",
   "description": "Allows you to selectively hide compendiums and folders via a configuration menu.",
-  "version": "0.1",
+  "version": "1.1.0",
   "compatibility": {
     "minimum": "13",
     "verified": "13"
@@ -27,7 +24,7 @@ PS C:\Users\marut\hide-compendiums-and-folders> cat module.json
     },
     {
       "lang": "fr",
-      "name": "FranÃ§ais",
+      "name": "Français",
       "path": "languages/fr.json"
     },
     {
@@ -39,8 +36,7 @@ PS C:\Users\marut\hide-compendiums-and-folders> cat module.json
   "styles": [
     "styles/hide-compendiums.css"
   ],
-  "manifest": "",
-  "download": "",
-  "url": ""
+  "manifest": "https://raw.githubusercontent.com/brokenlander/hide-compendiums-and-folders/main/module.json",
+  "download": "https://github.com/brokenlander/hide-compendiums-and-folders/releases/latest/download/hide-compendiums-and-folders.zip",
+  "url": "https://github.com/brokenlander/hide-compendiums-and-folders"
 }
-PS C:\Users\marut\hide-compendiums-and-folders>
